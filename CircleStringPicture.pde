@@ -1,16 +1,21 @@
 /*
   Processing sketch for "Automate the art"
-  A 2016 Hackaday prize entry by shlonkin
+  Based on the 2016 Hackaday prize entry by shlonkin. 
+  Modified in November, 2017 by flerlagekr in order to write a CSV file of line paths.
   
   When running the sketch:
-  1. Select an image file to use.
-  2. Set the various parameters by clicking.
-  3. Select a circular region by pressing the mouse in the center of the circle
+  1. Place an image in the folder of the code.
+  2. Set the image name in the Setup routine (expects jpg, but can be changed to png or other).
+  3. Set the various parameters by clicking.
+  4. Select a circular region by pressing the mouse in the center of the circle
      and dragging it to the desired size.
-  4. Click the "set circle" button.
-  5. If you are ready, click the "compute" button.
-  6. wait.
-  7. Clicking the "display" button will show different things.
+  5. Click the "set circle" button.
+  6. If you are ready, click the "compute" button.
+  7. Wait a few seconds while paths are generated.
+  8. The screen will indicate when the output csv is finished being written.
+     It is placed in the same folder as the code & image.
+  9. Clicking the "display" button will change the display. First click will place the original
+     Image behind the loom. Second click will display a negative image of the loom.
   
   NOTE: 
     A selected region with diameter of about 500 to 800 pixels works well.
@@ -24,7 +29,7 @@
 
 // These parameters can only be set here
 int pinCount = 200;
-int stepCount = 3500;
+int stepCount = 4500;
 
 // These can be set while running the sketch
 int fade = 30;
@@ -32,6 +37,8 @@ int opacity = 40;
 int ignoreDist = 20;
 
 String fileName;
+String outFile;
+String artName;
 boolean fileSelectedRun;
 
 PImage pic, pic2;
@@ -46,16 +53,44 @@ char circleCentered, circleSet, circlePinned, pinsShifted, stepsDone, withPic, p
 
 float picScale, picScale2;
 int picX, picY;
+int filecounter;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 
+public class writer {
+    public void writing(String outputFile, String textToWrite) {
+        try {
+            //Whatever the file path is.
+            File statText = new File(outputFile);
+            FileOutputStream is = new FileOutputStream(statText, true);
+            OutputStreamWriter osw = new OutputStreamWriter(is);    
+            Writer w = new BufferedWriter(osw);
+            w.write(textToWrite);
+            w.write("\r\n");
+            w.close();
+        } catch (IOException e) {
+            System.err.println("Problem writing to the file.");
+        }
+    }
+}
 
 void setup(){
   size(800, 700);
   picX = 80;
   picY = 60;
+  filecounter=0;
   
   // select the image file
   fileName = null;
+  artName = "Image";
+  fileName = artName + ".jpg";
+  outFile = artName + ".csv";
+
   while(fileName == null){
     fileSelectedRun = false;
     selectInput("Select an image file", "fileSelected", new File(sketchPath("select an image file")));
@@ -85,6 +120,7 @@ void setup(){
 
 void draw(){
   background(255);
+  String outputFileName;
   
   //These are the various contols ////////////////////////////////
   fill(150);
@@ -121,6 +157,7 @@ void draw(){
   text("set circle", 5, picY+50);
   text("compute", 5, picY+80);
   text("display", 5, picY+110);
+  text("display", 5, picY+110);
   text("darkness", 5, 18);
   text(opacity, 70, 18);
   text("fade ", 5, 38);
@@ -132,19 +169,42 @@ void draw(){
     stroke(0, opacity);
     strokeWeight(1);
     
+    outputFileName = "C:/Folder/" + outFile;
+    writer write = new writer();
+
+    filecounter = filecounter + 1;
+
+    if (filecounter==1){
+      System.out.println("Writing file...");
+      write.writing(outputFileName, "Art, Path, Path Order, Point, X, Y");
+    }
+    
     if(withPic == 1){
       image(pic2, picX, picY, height-picY, height-picY);
       for(int i=1; i<stepCount; i++){
         line(picX + pinsXY[steps[i-1]][0]*picScale2, picY + pinsXY[steps[i-1]][1]*picScale2, picX + pinsXY[steps[i]][0]*picScale2, picY + pinsXY[steps[i]][1]*picScale2);
+        if(filecounter==1){
+          write.writing(outputFileName, artName + ", Path " + (i-1) + "-" + i + ", 1, " + (i-1) + ", " + (picX + pinsXY[steps[i-1]][0]*picScale2) + ", " +  (picY + pinsXY[steps[i-1]][1]*picScale2));
+          write.writing(outputFileName, artName + ", Path " + (i-1) + "-" + i + ", 2, " + (i) + ", " +   (picX + pinsXY[steps[i]][0]*picScale2) +   ", " +  (picY + pinsXY[steps[i]][1]*picScale2));
+        }
       }
     }else if(withPic == 0){
       fill(255);
       rect(picX, picY, height-picY, height-picY);
       for(int i=1; i<stepCount; i++){
         line(picX + pinsXY[steps[i-1]][0]*picScale2, picY + pinsXY[steps[i-1]][1]*picScale2, picX + pinsXY[steps[i]][0]*picScale2, picY + pinsXY[steps[i]][1]*picScale2);
+        if(filecounter==1){
+          write.writing(outputFileName, artName + ", Path " + (i-1) + "-" + i + ", 1, " + (i-1) + ", " + (picX + pinsXY[steps[i-1]][0]*picScale2) + ", " +  (picY + pinsXY[steps[i-1]][1]*picScale2));
+          write.writing(outputFileName, artName + ", Path " + (i-1) + "-" + i + ", 2, " + (i) + ", " +   (picX + pinsXY[steps[i]][0]*picScale2) +   ", " +  (picY + pinsXY[steps[i]][1]*picScale2));
+        }
       }
     }else{
       image(pic2, picX, picY, height-picY, height-picY);
+    }
+
+    //writer.close();
+    if (filecounter==1){
+      System.out.println("Closing file...");
     }
     
     for(int i=0; i<pinCount; i++){
@@ -290,11 +350,13 @@ void pinCircle(){
   // 0.0245436926 radians
   // start at the right and follow standard orientation
   float angle = PI*2.0/pinCount;
+
   for(int i=0; i<pinCount; i++){
     pinsXY[i][0] = round(circleX + circleRadius * cos(i*angle));
     pinsXY[i][1] = round(circleY - circleRadius * sin(i*angle));
   }
 }
+
 
 void computeSteps(){
   // work with a copy of the pic
